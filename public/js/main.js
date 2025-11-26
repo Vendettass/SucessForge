@@ -2,7 +2,7 @@
 // CONFIG
 // ------------------------------
 
-const API_BASE = "SuccesForge/api";   // Modifier si besoin
+const API_BASE = "http://151.80.145.190:4001/";   // Modifier si besoin
 const dom = {
     inputSteamId: document.getElementById("steamid-input"),
     loadBtn: document.getElementById("load-btn"),
