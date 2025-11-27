@@ -44,6 +44,18 @@ if (!empty($_GET['appid'])) {
         $error = "AppID invalide.";
     }
 }
+
+// === Compteur de succès débloqués (uniquement en mode profil joueur) ===
+$unlockedCount     = 0;
+$totalAchievements = 0;
+if ($forPlayer && !empty($achievements)) {
+    $totalAchievements = count($achievements);
+    foreach ($achievements as $a) {
+        if (!empty($a['unlocked'])) {
+            $unlockedCount++;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -163,6 +175,40 @@ if (!empty($_GET['appid'])) {
     <!-- LISTE DES SUCCÈS -->
     <?php if ($appDetails && !empty($achievements)): ?>
         <section class="mt-6">
+            <!-- Bloc compteur + barre de progression (uniquement en mode joueur) -->
+            <?php if ($forPlayer && $totalAchievements > 0): ?>
+                <div class="mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                        <p class="text-lg font-semibold">
+                            Succès débloqués :
+                            <span class="font-mono">
+                                <?php echo $unlockedCount; ?>/<?php echo $totalAchievements; ?>
+                            </span>
+                            <?php if ($unlockedCount === $totalAchievements): ?>
+                                <span class="inline-flex items-center ml-2 px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 text-xs font-bold">
+                                    100% complété ⭐
+                                </span>
+                            <?php endif; ?>
+                        </p>
+                        <p class="text-xs text-slate-400">
+                            <?php
+                                $percentCompleted = $totalAchievements > 0
+                                    ? ($unlockedCount / $totalAchievements) * 100
+                                    : 0;
+                                echo number_format($percentCompleted, 1, ',', ' ') . ' % complétés';
+                            ?>
+                        </p>
+                    </div>
+
+                    <div class="w-full h-3 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                            class="h-3 rounded-full bg-indigo-500 transition-all"
+                            style="width: <?php echo $totalAchievements > 0 ? ($unlockedCount / $totalAchievements) * 100 : 0; ?>%;"
+                        ></div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <h3 class="text-xl font-semibold mb-3">Succès du jeu</h3>
             <p class="text-sm text-slate-400 mb-4">
                 Triés par rareté (les plus rares en premier).
