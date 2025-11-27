@@ -1,5 +1,6 @@
 <?php
 session_start();
+
 require_once '/var/www/src/config.php';
 require_once '/var/www/src/steam_api.php';
 require_once '/var/www/src/auth.php';
@@ -11,9 +12,11 @@ $appDetails   = null;
 $achievements = [];
 $error        = null;
 
-$steamInput = $_GET['steam'] ?? '';  // ce que l'utilisateur tape
-$steamId    = null;                  // SteamID64 résolue
-$forPlayer  = false;
+// Si l'utilisateur est connecté, on propose son steamid par défaut
+$userSteam   = $user['steamid'] ?? '';
+$steamInput  = $_GET['steam'] ?? $userSteam;
+$steamId     = null;
+$forPlayer   = false;
 
 if (!empty($_GET['appid'])) {
     $appid = (int) $_GET['appid'];
@@ -127,7 +130,7 @@ if ($forPlayer && !empty($achievements)) {
                         name="appid"
                         placeholder="Ex : 730 pour CS2, 570 pour Dota 2"
                         class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value="<?php echo $appid ? htmlspecialchars($appid) : ''; ?>"
+                        value="<?php echo htmlspecialchars($steamInput); ?>"
                         required>
                     <button
                         type="submit"

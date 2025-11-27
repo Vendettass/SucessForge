@@ -1,15 +1,23 @@
 <?php
 require_once '/var/www/src/auth.php';
 session_start();
+
 if (!isset($_SESSION['user'])) {
-    header('Location: /login.php'); exit;
+    header('Location: /login.php');
+    exit;
 }
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $steamid = trim($_POST['steamid'] ?? '');
-    $uid = (int)$_SESSION['user']['id'];
-    if ($steamid !== '') {
-        update_user_steamid($uid, $steamid);
+
+$steamid = trim($_POST['steamid'] ?? '');
+
+if ($steamid !== '') {
+    $uid = (int) $_SESSION['user']['id'];
+
+    if (update_user_steamid($uid, $steamid)) {
+        // mettre à jour en session aussi
+        $_SESSION['user']['steamid'] = $steamid;
     }
 }
-header('Location: /?appid=' . urlencode($_GET['appid'] ?? ''));
+
+// On revient à la page d'accueil
+header('Location: /');
 exit;
