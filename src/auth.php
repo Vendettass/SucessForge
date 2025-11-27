@@ -4,7 +4,7 @@
 // Fichier JSON où sont stockés les comptes
 define('USERS_FILE', '/var/www/data/users.json');
 
-/** Lit et renvoie le tableau d'utilisateurs ([] si vide/inexistant) */
+/** Lit et renvoie le tableau d'utilisateurs ([] si vide ou inexistant) */
 function read_users(): array {
     if (!file_exists(USERS_FILE)) {
         return [];
@@ -46,34 +46,36 @@ function save_users(array $users): bool {
     return $written !== false;
 }
 
-/** Crée un utilisateur, retourne son tableau ou null si échec / déjà pris */
+/**
+ * Crée un utilisateur (username, password, steamid)
+ * Retourne le user complet ou null si échec
+ */
 function register_user(string $username, string $password, ?string $steamid = null): ?array {
     $username = trim($username);
+    $steamid = trim($steamid ?? "");
+
     if ($username === '' || $password === '') {
         return null;
     }
 
     $users = read_users();
 
-    // Vérifier si le nom existe déjà
+    // Vérifier si le nom existe déjà (insensible à la casse)
     foreach ($users as $u) {
         if (strcasecmp($u['username'], $username) === 0) {
             return null;
         }
     }
 
-    $id = 1;
-    if (!empty($users)) {
-        $ids = array_column($users, 'id');
-        $id = max($ids) + 1;
-    }
+    // Calcul d’un nouvel ID auto
+    $id = empty($users) ? 1 : (max(array_column($users, 'id')) + 1);
 
     $user = [
-        'id'           => $id,
-        'username'     => $username,
-        'password_hash'=> password_hash($password, PASSWORD_DEFAULT),
-        'steamid'      => $steamid ?? '',
-        'created_at'   => gmdate('c'),
+        'id'            => $id,
+        'username'      => $username,
+        'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+        'steamid'       => $steamid, // incrusté directement ici
+        'created_at'    => gmdate('c'),
     ];
 
     $users[] = $user;
@@ -85,7 +87,10 @@ function register_user(string $username, string $password, ?string $steamid = nu
     return $user;
 }
 
-/** Authentifie un utilisateur (username + password), retourne le user complet ou null */
+/**
+ * Authentifie un utilisateur
+ * Retourne le user complet ou null si incorrect
+ */
 function authenticate_user(string $username, string $password): ?array {
     $username = trim($username);
     if ($username === '' || $password === '') {
@@ -104,14 +109,17 @@ function authenticate_user(string $username, string $password): ?array {
     return null;
 }
 
-/** Met à jour le steamid pour un utilisateur donné */
+/**
+ * Met à jour le SteamID d’un utilisateur
+ * (utile si tu veux plus tard modifier le SteamID)
+ */
 function update_user_steamid(int $id, string $steamid): bool {
     $users = read_users();
     $updated = false;
 
     foreach ($users as &$u) {
         if ($u['id'] === $id) {
-            $u['steamid'] = $steamid;
+            $u['steamid'] = trim($steamid);
             $updated = true;
             break;
         }
