@@ -1,9 +1,10 @@
 <?php
+session_start();
 require_once '/var/www/src/config.php';
 require_once '/var/www/src/steam_api.php';
 require_once '/var/www/src/auth.php';
 
-session_start();
+$user = $_SESSION['user'] ?? null;
 
 $appid        = null;
 $appDetails   = null;
@@ -13,7 +14,6 @@ $error        = null;
 $steamInput = $_GET['steam'] ?? '';  // ce que l'utilisateur tape
 $steamId    = null;                  // SteamID64 résolue
 $forPlayer  = false;
-$user = $_SESSION['user'] ?? null;
 
 if (!empty($_GET['appid'])) {
     $appid = (int) $_GET['appid'];
@@ -72,13 +72,48 @@ if ($forPlayer && !empty($achievements)) {
 
 <body class="bg-slate-900 text-slate-100 min-h-screen">
     <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0">
-        <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
             <h1 class="text-2xl font-bold tracking-tight">
                 <span class="text-indigo-400">Succes</span>Forge
             </h1>
-            <p class="text-sm text-slate-400">Explore les succès Steam</p>
+
+            <div class="flex items-center gap-4 text-sm">
+                <p class="hidden sm:block text-slate-400">
+                    Explore les succès Steam
+                </p>
+
+                <?php if ($user): ?>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs sm:text-sm text-slate-300">
+                            Connecté en tant que
+                            <span class="font-semibold text-indigo-300">
+                                <?php echo htmlspecialchars($user['username']); ?>
+                            </span>
+                        </span>
+                        <a
+                            href="/logout.php"
+                            class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs sm:text-sm hover:bg-slate-700">
+                            Déconnexion
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <div class="flex items-center gap-2">
+                        <a
+                            href="/register.php"
+                            class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs sm:text-sm hover:bg-slate-700">
+                            Créer un compte
+                        </a>
+                        <a
+                            href="/login.php"
+                            class="px-3 py-1.5 rounded-lg bg-indigo-600 text-xs sm:text-sm font-semibold hover:bg-indigo-500">
+                            Se connecter
+                        </a>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </header>
+
 
     <main class="max-w-5xl mx-auto px-4 py-8 space-y-6">
         <!-- FORMULAIRE -->
