@@ -7,19 +7,37 @@ $appDetails = null;
 $achievements = [];
 $error = null;
 
+$steamInput = $_GET['steam'] ?? '';   // ce que l'user tape
+$steamId    = null;                   // SteamID64 rÃ©solue
+$forPlayer  = false;
+
 if (!empty($_GET['appid'])) {
     $appid = (int) $_GET['appid'];
 
     if ($appid > 0) {
-        // Récupérer infos du jeu
+        // Infos du jeu
         $appDetails = getSteamAppDetails($appid);
         if (!$appDetails) {
-            $error = "Impossible de récupérer les informations du jeu. Vérifie l'AppID.";
+            $error = "Impossible de rÃ©cupÃ©rer les informations du jeu. VÃ©rifie l'AppID.";
         } else {
-            // Récupérer les succès
-            $achievements = getSteamAchievementsWithPercent($appid);
-            if (empty($achievements)) {
-                $error = "Aucun succès disponible ou impossible de récupérer les succès pour ce jeu.";
+            // Si un joueur est indiquÃ©, on bascule en mode "profil"
+            if (!empty($steamInput)) {
+                $steamId = resolveSteamId($steamInput);
+                if (!$steamId) {
+                    $error = "Impossible de rÃ©soudre ce profil Steam (SteamID64 ou URL perso).";
+                } else {
+                    $forPlayer = true;
+                    $achievements = getPlayerAchievementsDetailed($steamId, $appid);
+                    if (empty($achievements)) {
+                        $error = "Aucun succÃ¨s trouvÃ© pour ce joueur sur ce jeu.";
+                    }
+                }
+            } else {
+                // Mode global comme avant
+                $achievements = getSteamAchievementsWithPercent($appid);
+                if (empty($achievements)) {
+                    $error = "Aucun succÃ¨s disponible ou impossible de rÃ©cupÃ©rer les succÃ¨s pour ce jeu.";
+                }
             }
         }
     } else {
@@ -29,19 +47,21 @@ if (!empty($_GET['appid'])) {
 ?>
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <title>SuccesForge</title>
     <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-slate-900 text-slate-100 min-h-screen">
     <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0">
         <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
             <h1 class="text-2xl font-bold tracking-tight">
                 <span class="text-indigo-400">Succes</span>Forge
             </h1>
-            <p class="text-sm text-slate-400">Explore les succès Steam</p>
+            <p class="text-sm text-slate-400">Explore les succï¿½s Steam</p>
         </div>
     </header>
 
@@ -49,22 +69,35 @@ if (!empty($_GET['appid'])) {
         <!-- Formulaire -->
         <section>
             <h2 class="text-xl font-semibold mb-4">Rechercher un jeu par AppID Steam</h2>
-            <form method="GET" class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
-                <input
-                    type="text"
-                    name="appid"
-                    placeholder="Ex : 730 pour CS2, 570 pour Dota 2"
-                    class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value="<?php echo $appid ? htmlspecialchars($appid) : ''; ?>"
-                    required
-                >
-                <button
-                    type="submit"
-                    class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold"
-                >
-                    Charger les succès
-                </button>
+            <form method="GET" class="flex flex-col gap-3">
+                <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+                    <input
+                        type="text"
+                        name="appid"
+                        placeholder="AppID du jeu (ex : 1778820 pour TEKKEN 8)"
+                        class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value="<?php echo $appid ? htmlspecialchars($appid) : ''; ?>"
+                        required>
+                    <button
+                        type="submit"
+                        class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold">
+                        Charger
+                    </button>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input
+                        type="text"
+                        name="steam"
+                        placeholder="SteamID64 ou URL personnalisÃ©e (optionnel)"
+                        class="flex-1 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value="<?php echo htmlspecialchars($steamInput); ?>">
+                    <p class="text-xs text-slate-500 sm:self-center">
+                        Laisse vide pour voir les statistiques globales du jeu.
+                    </p>
+                </div>
             </form>
+
         </section>
 
         <!-- Messages d'erreur -->
@@ -84,8 +117,7 @@ if (!empty($_GET['appid'])) {
                         <img
                             src="<?php echo htmlspecialchars($appDetails['header_image']); ?>"
                             alt="Cover du jeu"
-                            class="w-full md:w-72 rounded-xl shadow-lg border border-slate-700"
-                        >
+                            class="w-full md:w-72 rounded-xl shadow-lg border border-slate-700">
                     <?php endif; ?>
 
                     <div class="flex-1 space-y-2">
@@ -116,23 +148,28 @@ if (!empty($_GET['appid'])) {
             </section>
         <?php endif; ?>
 
-        <!-- Liste des succès -->
+        <!-- Liste des succï¿½s -->
         <?php if ($appDetails && !empty($achievements)): ?>
             <section class="mt-6">
-                <h3 class="text-xl font-semibold mb-3">Succès du jeu</h3>
+                <h3 class="text-xl font-semibold mb-3">Succï¿½s du jeu</h3>
                 <p class="text-sm text-slate-400 mb-4">
-                    Triés par rareté (les plus rares en premier).
+                    Triï¿½s par raretï¿½ (les plus rares en premier).
                 </p>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <?php foreach ($achievements as $ach): ?>
-                        <article class="flex gap-3 p-3 rounded-xl bg-slate-800 border border-slate-700">
+                        <?php
+                        $unlocked = $ach['unlocked'] ?? null;
+                        $cardClasses = $unlocked
+                            ? "flex gap-3 p-3 rounded-xl bg-emerald-900/30 border border-emerald-500/60"
+                            : "flex gap-3 p-3 rounded-xl bg-slate-800 border border-slate-700 opacity-80";
+                        ?>
+                        <article class="<?php echo $cardClasses; ?>">
                             <?php if (!empty($ach['icon'])): ?>
                                 <img
-                                    src="<?php echo htmlspecialchars($ach['icon']); ?>"
-                                    alt="Icône succès"
-                                    class="w-12 h-12 rounded-md border border-slate-600 flex-shrink-0"
-                                >
+                                    src="<?php echo htmlspecialchars($unlocked ? $ach['icon'] : ($ach['icon_gray'] ?? $ach['icon'])); ?>"
+                                    alt="IcÃ´ne succÃ¨s"
+                                    class="w-12 h-12 rounded-md border border-slate-600 flex-shrink-0">
                             <?php else: ?>
                                 <div class="w-12 h-12 rounded-md border border-slate-600 flex items-center justify-center text-xs text-slate-500">
                                     N/A
@@ -140,17 +177,33 @@ if (!empty($_GET['appid'])) {
                             <?php endif; ?>
 
                             <div class="flex-1">
-                                <h4 class="font-semibold">
+                                <h4 class="font-semibold flex items-center gap-2">
                                     <?php echo htmlspecialchars($ach['displayName']); ?>
+                                    <?php if ($unlocked !== null): ?>
+                                        <?php if ($unlocked): ?>
+                                            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                                                DÃ©bloquÃ©
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-200">
+                                                Non dÃ©bloquÃ©
+                                            </span>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                 </h4>
+
                                 <?php if (!empty($ach['description'])): ?>
                                     <p class="text-sm text-slate-300">
                                         <?php echo htmlspecialchars($ach['description']); ?>
                                     </p>
+                                <?php else: ?>
+                                    <p class="text-sm text-slate-500 italic">
+                                        Aucune description disponible.
+                                    </p>
                                 <?php endif; ?>
 
                                 <p class="text-xs text-slate-400 mt-1">
-                                    Rareté :
+                                    RaretÃ© :
                                     <?php if ($ach['percent'] !== null): ?>
                                         <span class="font-mono">
                                             <?php echo number_format($ach['percent'], 2, ',', ' '); ?> %
@@ -167,10 +220,11 @@ if (!empty($_GET['appid'])) {
         <?php elseif ($appid && !$error): ?>
             <section class="mt-6">
                 <p class="text-slate-400 text-sm">
-                    Aucun succès à afficher pour ce jeu.
+                    Aucun succï¿½s ï¿½ afficher pour ce jeu.
                 </p>
             </section>
         <?php endif; ?>
     </main>
 </body>
+
 </html>
